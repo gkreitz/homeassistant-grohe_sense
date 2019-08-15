@@ -1,0 +1,8 @@
+{
+	"domain": "grohe_sense",
+	"name": "Grohe Sense",
+	"documentation": "https://github.com/gkreitz/homeassistant-grohe_sense",
+	"dependencies": [],
+	"requirements": ["aiohttp==3.5.4"],
+	"codeowners": ["@gkreitz"]
+}
