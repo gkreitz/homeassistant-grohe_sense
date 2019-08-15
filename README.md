@@ -25,7 +25,7 @@ Graphing water consumption is also nice. Note that the data returned by Grohe's 
 
 ## Installation
 - Ensure everything is set up and working in Grohe's Ondus app
-- Copy this folder to `<config_dir/custom_components/grohe_sense/`
+- Copy this folder to `<config_dir>/custom_components/grohe_sense/`
 - Go to https://idp2-apigw.cloud.grohe.com/v3/iot/oidc/login
 - Bring up developer tools
 - Log in, that'll try redirecting your browser with a 302 to an url starting with `ondus://idp2-apigw.cloud.grohe.com/v3/iot/oidc/token`, which an off-the-shelf Chrome will ignore
