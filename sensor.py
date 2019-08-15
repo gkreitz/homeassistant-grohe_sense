@@ -158,7 +158,9 @@ class GroheSenseGuardReader:
             await self._fetching_data.wait()
             return
 
-        if datetime.now() - self._data_fetch_completed < timedelta(minutes=1):
+        # XXX: Hardcoded 15 minute interval for now. Would be prettier to set this a bit more dynamically
+        # based on the json response for the sense guard, and probably hardcode something longer for the sense.
+        if datetime.now() - self._data_fetch_completed < timedelta(minutes=15):
             _LOGGER.debug('Skipping fetching new data, time since last fetch was only %s', datetime.now() - self._data_fetch_completed)
             return
 
