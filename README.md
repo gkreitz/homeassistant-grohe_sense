@@ -6,6 +6,7 @@ This is an integration to get Grohe Sense (small leak sensor) and Grohe Sense Gu
 When you install this, you get the following sensors for Sense:
  - **humidity**
  - **temperature**
+ - **notifications**
 It's a small, battery-powered device, so don't expect frequent updates. It seems to measure every hour, but the app also said it only uploads every 24h. The sensors I implemented only give the latest measurement returned from the server.
  
 When you install this, you get the following sensors for each Sense Guard (subject to change, still haven't figured out what makes sense really):
@@ -14,9 +15,12 @@ When you install this, you get the following sensors for each Sense Guard (subje
  - **flowrate**
  - **pressure** 
  - **temperature_guard**
+ - **notifications**
 The Sense Guard uploads data to its server every 15 minutes (at least the one I have), so don't expect to use this for anything close to real-time. For water withdrawals, it seems to report the withdrawal only when it ends, so if you continuously withdraw water, I guess those sensors may stay at 0. Hopefully, that would show up in the flowrate sensor.
 
 This integration currently only implements the above sensors. So, you can't do any actions (e.g., turn water on/off), and you don't get any alerts on events (I'd be interested in implementing this, pointers to any documentation on protocol for alerts would be much appreciated).
+
+The notifications sensor is a string of all your unread notifications (newline-separated). I recommend installing the Grohe Sense app, where there is a UI to read them (so they disappear from this sensor). On first start, you may find you have a lot of old unread notifications. The notifications I know how to parse are listed in `NOTIFICATION_TYPES` in `sensor.py`, if the API returns something unknown, it will be shown as `Unknown notification:` and then a json dump. If you see that, please consider submitting a bug report with the `category` and `type` fields from the Json + some description of what it means (can be found by finding the corresponding notification in the Grohe Sense app).
 
 ## Automation ideas
 With the limitations above, it's not quite obvious what automations, if any, to set up. If I get around to implementing water on/off, turning it off when the alarm is armed away and no water using machines are on may be an idea. Another would be send off a notification when the alarm is armed away and flowrate is >0 (controlling for the high latency, plus dishwashers, ice makers, et.c.).

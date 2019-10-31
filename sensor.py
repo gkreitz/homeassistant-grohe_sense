@@ -34,6 +34,31 @@ SENSOR_TYPES = {
         GROHE_SENSE_GUARD_TYPE: [ 'flowrate', 'pressure', 'temperature_guard']
         }
 
+NOTIFICATION_UPDATE_DELAY = timedelta(minutes=1)
+
+NOTIFICATION_TYPES = { # The protocol returns notification information as a (category, type) tuple, this maps to strings
+        (10,60) : 'Firmware update available',
+        (10,460) : 'Firmware update available',
+        (20,11) : 'Battery low',
+        (20,12) : 'Battery empty',
+        (20,20) : 'Below temperature threshold',
+        (20,21) : 'Above temperature threshold',
+        (20,30) : 'Below humidity threshold',
+        (20,31) : 'Above humidity threshold',
+        (20,40) : 'Frost warning',
+        (20,80) : 'Lost wifi',
+        (20,320) : 'Unusual water consumption (water shut off)',
+        (20,321) : 'Unusual water consumption (water not shut off)',
+        (20,330) : 'Micro leakage',
+        (20,340) : 'Frost warning',
+        (20,380) : 'Lost wifi',
+        (30,0) : 'Flooding',
+        (30,310) : 'Pipe break',
+        (30,400) : 'Maximum volume reached',
+        (30,430) : 'Sense detected water (water shut off)',
+        (30,431) : 'Sense detected water (water not shut off)',
+        }
+
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     import aiohttp
     _LOGGER.debug("Starting Grohe Sense sensor")
@@ -56,6 +81,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
                 _LOGGER.debug('Found appliance %s', appliance)
                 applianceId = appliance['appliance_id']
                 reader = GroheSenseGuardReader(auth_session, locationId, roomId, applianceId, appliance['type'])
+                entities.append(GroheSenseNotificationEntity(auth_session, locationId, roomId, applianceId, appliance['name']))
                 if appliance['type'] in SENSOR_TYPES:
                     entities += [GroheSenseSensorEntity(reader, appliance['name'], key) for key in SENSOR_TYPES[appliance['type']]]
                 if appliance['type'] == GROHE_SENSE_TYPE:
@@ -217,6 +243,29 @@ class GroheSenseGuardReader:
         if key in self._measurements:
             return self._measurements[key]
         return STATE_UNKNOWN
+
+
+class GroheSenseNotificationEntity(Entity):
+    def __init__(self, auth_session, locationId, roomId, applianceId, name):
+        self._auth_session = auth_session
+        self._locationId = locationId
+        self._roomId = roomId
+        self._applianceId = applianceId
+        self._name = name
+        self._notifications = []
+
+    @property
+    def name(self):
+        return f'{self._name} notifications'
+
+    @property
+    def state(self):
+        return '\n'.join([NOTIFICATION_TYPES.get((n['category'], n['type']), 'Unknown notification: {}'.format(n)) for n in self._notifications])
+
+    @Throttle(NOTIFICATION_UPDATE_DELAY)
+    async def async_update(self):
+        self._notifications = await self._auth_session.get(BASE_URL + f'locations/{self._locationId}/rooms/{self._roomId}/appliances/{self._applianceId}/notifications')
+
 
 class GroheSenseGuardWithdrawalsEntity(Entity):
     def __init__(self, reader, name, days):
