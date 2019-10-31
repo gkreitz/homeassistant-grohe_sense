@@ -7,6 +7,7 @@ When you install this, you get the following sensors for Sense:
  - **humidity**
  - **temperature**
  - **notifications**
+
 It's a small, battery-powered device, so don't expect frequent updates. It seems to measure every hour, but the app also said it only uploads every 24h. The sensors I implemented only give the latest measurement returned from the server.
  
 When you install this, you get the following sensors for each Sense Guard (subject to change, still haven't figured out what makes sense really):
@@ -16,14 +17,19 @@ When you install this, you get the following sensors for each Sense Guard (subje
  - **pressure** 
  - **temperature_guard**
  - **notifications**
-The Sense Guard uploads data to its server every 15 minutes (at least the one I have), so don't expect to use this for anything close to real-time. For water withdrawals, it seems to report the withdrawal only when it ends, so if you continuously withdraw water, I guess those sensors may stay at 0. Hopefully, that would show up in the flowrate sensor.
 
-This integration currently only implements the above sensors. So, you can't do any actions (e.g., turn water on/off), and you don't get any alerts on events (I'd be interested in implementing this, pointers to any documentation on protocol for alerts would be much appreciated).
+You will also get a switch device (so, be careful with `group.all_switches`, as that now includes your water) called
+ - **valve**
+
+The Sense Guard uploads data to its server every 15 minutes (at least the one I have), so don't expect to use this for anything close to real-time. For water withdrawals, it seems to report the withdrawal only when it ends, so if you continuously withdraw water, I guess those sensors may stay at 0. Hopefully, that would show up in the flowrate sensor.
 
 The notifications sensor is a string of all your unread notifications (newline-separated). I recommend installing the Grohe Sense app, where there is a UI to read them (so they disappear from this sensor). On first start, you may find you have a lot of old unread notifications. The notifications I know how to parse are listed in `NOTIFICATION_TYPES` in `sensor.py`, if the API returns something unknown, it will be shown as `Unknown notification:` and then a json dump. If you see that, please consider submitting a bug report with the `category` and `type` fields from the Json + some description of what it means (can be found by finding the corresponding notification in the Grohe Sense app).
 
 ## Automation ideas
-With the limitations above, it's not quite obvious what automations, if any, to set up. If I get around to implementing water on/off, turning it off when the alarm is armed away and no water using machines are on may be an idea. Another would be send off a notification when the alarm is armed away and flowrate is >0 (controlling for the high latency, plus dishwashers, ice makers, et.c.).
+- Turning water off when you're away (and dishwasher, washer, et.c. are not running) and turning it back on when home again.
+- Turning water off when non-Grohe sensors detect water.
+- Passing along notifications from Grohe sense to Slack (note that there is a polling delay, plus unknown delay between device and Grohe's cloud)
+- Send Slack notification when your alarm is armed away and flowrate is >0 (controlling for the high latency, plus dishwashers, ice makers, et.c.).
 
 Graphing water consumption is also nice. Note that the data returned by Grohe's servers is extremely detailed, so for nicer graphs, you may want to talk to the servers directly and access the json data, rather than go via this integration.
 
@@ -36,11 +42,10 @@ Graphing water consumption is also nice. Note that the data returned by Grohe's 
 - You should see this failed redirect in your developer tools. Copy out the full URL and replace `ondus` with `https` and visit that URL (will likely only work once, and will expire, so don't be too slow).
 - This gives you a json response. Save it and extract refresh_token from it (manually, or `jq .refresh_token < file.json`)
 
-Put the following in your home assistant config:
+Put the following in your home assistant config (N.B., format has changed, this component is no longer configured as a sensor platform)
 ```
-sensor:
- - platform: grohe_sense
-   refresh_token: "YOUR_VERY_VERY_LONG_REFRESH_TOKEN"
+grohe_sense:
+  refresh_token: "YOUR_VERY_VERY_LONG_REFRESH_TOKEN"
 ```
 
 ## Remarks on the "API"
