@@ -1,6 +1,6 @@
 import logging
 from datetime import (timedelta)
-from homeassistant.components.switch import SwitchDevice
+from homeassistant.components.switch import SwitchEntity
 
 from homeassistant.helpers.entity import Entity
 from homeassistant.util import Throttle
@@ -23,7 +23,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         async_add_entities(entities)
 
 
-class GroheSenseGuardValve(SwitchDevice):
+class GroheSenseGuardValve(SwitchEntity):
     def __init__(self, auth_session, locationId, roomId, applianceId, name):
         self._auth_session = auth_session
         self._locationId = locationId
@@ -64,10 +64,10 @@ class GroheSenseGuardValve(SwitchDevice):
         else:
             _LOGGER.warning('Got unknown response back when setting valve state: %s', command_response)
 
-    async def turn_on(self, **kwargs):
+    async def async_turn_on(self, **kwargs):
         _LOGGER.info('Turning on water for %s', self._name)
         await self._set_state(True)
 
-    async def turn_off(self, **kwargs):
+    async def async_turn_off(self, **kwargs):
         _LOGGER.info('Turning off water for %s', self._name)
         await self._set_state(False)
