@@ -59,6 +59,11 @@ async def initialize_shared_objects(hass, refresh_token):
                 applianceId = appliance['appliance_id']
                 devices.append(GroheDevice(locationId, roomId, applianceId, appliance['type'], appliance['name']))
 
+class OauthException(Exception):
+    def __init__(self, error_code, reason):
+        self.error_code = error_code
+        self.reason = reason
+
 class OauthSession:
     def __init__(self, session, refresh_token):
         self._session = session
@@ -115,13 +120,20 @@ class OauthSession:
                     _LOGGER.debug('Http %s request to %s got response %d', method, url, response.status)
                     if response.status in (200, 201):
                         return await response.json()
-                    elif response.status == 401 and auth_token != None:
-                        _LOGGER.debug('Request to %s returned status %d, refreshing auth token', url, response.status)
-                        token = await auth_token.token(token)
+                    elif response.status == 401:
+                        if auth_token != None:
+                            _LOGGER.debug('Request to %s returned status %d, refreshing auth token', url, response.status)
+                            token = await auth_token.token(token)
+                        else:
+                            _LOGGER.error('Grohe sense refresh token is invalid (or expired), please update your configuration with a new refresh token')
+                            raise OauthException(response.status, await response.text())
                     else:
-                        _LOGGER.debug('Request to %s returned status %d', url, response.status)
+                        _LOGGER.debug('Request to %s returned status %d, %s', url, response.status, await response.text())
+            except OauthException as oe:
+                raise
             except Exception as e:
                 _LOGGER.debug('Exception for http %s request to %s: %s', method, url, e)
+
             tries += 1
             await asyncio.sleep(min(600, 2**tries))
 
