@@ -39,7 +39,7 @@ async def async_setup(hass, config):
     return True
 
 async def initialize_shared_objects(hass, refresh_token):
-    session = aiohttp_client.async_get_clientsession(hass)
+    session = aiohttp_client.async_get_clientsession(hass, verify_ssl=False)
     auth_session = OauthSession(session, refresh_token)
     devices = []
 
