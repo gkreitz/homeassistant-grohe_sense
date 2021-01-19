@@ -29,6 +29,47 @@ GROHE_SENSE_GUARD_TYPE = 103 # Type identifier for sense guard, the water guard 
 
 GroheDevice = collections.namedtuple('GroheDevice', ['locationId', 'roomId', 'applianceId', 'type', 'name'])
 
+# Unfortunately, Grohe uses a certificate which is no longer trusted by
+# the CA cert bundle included in home asssistant for the endpoints we use.
+# We work around that by adding these CA:s. There is no good library support
+# in Home Assistant to do this, as far as I can tell, so the below monstrosity
+# copies (and uses private methods from) other Home Assistant code.
+#
+# Hopefully Grohe will buy their next TLS certificate from a better provider, so
+# that this mess can be replaced with just using aiohttp_client.async_get_clientsession(hass)
+async def setup_aiohttp_client_session(hass):
+    import sys
+    import aiohttp
+    from pathlib import Path
+    from homeassistant.util import ssl as ssl_util
+    from homeassistant.const import EVENT_HOMEASSISTANT_CLOSE, __version__
+    from aiohttp.hdrs import USER_AGENT
+    SERVER_SOFTWARE = "HomeAssistant/{0} aiohttp/{1} Python/{2[0]}.{2[1]}".format( __version__, aiohttp.__version__, sys.version_info)
+
+    _LOGGER.debug("Setting up custom SSL context for grohe")
+    ssl_context = ssl_util.client_context()
+    _LOGGER.debug("SSL store stats: %s", ssl_context.cert_store_stats())
+    grohe_cert = Path(__file__).parent / 'grohe_cloud.crt'
+    ssl_context.load_verify_locations(cafile=grohe_cert.absolute())
+    _LOGGER.debug("SSL store stats: %s", ssl_context.cert_store_stats())
+
+    connector = aiohttp.TCPConnector(enable_cleanup_closed=True, ssl=ssl_context)
+    hass.data['grohe_sense_grohe_connector'] = connector
+
+    async def _async_close_connector(event) -> None:
+        """Close connector pool."""
+        await connector.close()
+    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_CLOSE, _async_close_connector)
+
+    clientsession = aiohttp.ClientSession(
+        connector=connector,
+        headers={USER_AGENT: SERVER_SOFTWARE})
+
+    aiohttp_client._async_register_clientsession_shutdown(hass, clientsession)
+    hass.data['grohe_sense_grohe_clientsession'] = clientsession
+
+    return clientsession
+
 async def async_setup(hass, config):
     _LOGGER.debug("Loading Grohe Sense")
 
@@ -39,7 +80,7 @@ async def async_setup(hass, config):
     return True
 
 async def initialize_shared_objects(hass, refresh_token):
-    session = aiohttp_client.async_get_clientsession(hass)
+    session = await setup_aiohttp_client_session(hass)
     auth_session = OauthSession(session, refresh_token)
     devices = []
 
