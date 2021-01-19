@@ -1,10 +1,11 @@
 import logging
 import asyncio
+import collections
 from datetime import (datetime, timezone, timedelta)
 
 from homeassistant.helpers.entity import Entity
 from homeassistant.util import Throttle
-from homeassistant.const import (STATE_UNAVAILABLE, STATE_UNKNOWN)
+from homeassistant.const import (STATE_UNAVAILABLE, STATE_UNKNOWN, TEMP_CELSIUS, DEVICE_CLASS_TEMPERATURE, PERCENTAGE, DEVICE_CLASS_HUMIDITY, VOLUME_FLOW_RATE_CUBIC_METERS_PER_HOUR, PRESSURE_MBAR, DEVICE_CLASS_PRESSURE, TEMP_CELSIUS, DEVICE_CLASS_TEMPERATURE, VOLUME_LITERS)
 
 from homeassistant.helpers import aiohttp_client
 
@@ -13,7 +14,18 @@ from . import (DOMAIN, BASE_URL, GROHE_SENSE_TYPE, GROHE_SENSE_GUARD_TYPE)
 _LOGGER = logging.getLogger(__name__)
 
 
+SensorType = collections.namedtuple('SensorType', ['unit', 'device_class', 'function'])
+
+
 SENSOR_TYPES = {
+        'temperature': SensorType(TEMP_CELSIUS, DEVICE_CLASS_TEMPERATURE, lambda x : x),
+        'humidity': SensorType(PERCENTAGE, DEVICE_CLASS_HUMIDITY, lambda x : x),
+        'flowrate': SensorType(VOLUME_FLOW_RATE_CUBIC_METERS_PER_HOUR, None, lambda x : x * 3.6),
+        'pressure': SensorType(PRESSURE_MBAR, DEVICE_CLASS_PRESSURE, lambda x : x * 1000),
+        'temperature_guard': SensorType(TEMP_CELSIUS, DEVICE_CLASS_TEMPERATURE, lambda x : x),
+        }
+
+SENSOR_TYPES_PER_UNIT = {
         GROHE_SENSE_TYPE: [ 'temperature', 'humidity'],
         GROHE_SENSE_GUARD_TYPE: [ 'flowrate', 'pressure', 'temperature_guard']
         }
@@ -56,8 +68,8 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     for device in hass.data[DOMAIN]['devices']:
         reader = GroheSenseGuardReader(auth_session, device.locationId, device.roomId, device.applianceId, device.type)
         entities.append(GroheSenseNotificationEntity(auth_session, device.locationId, device.roomId, device.applianceId, device.name))
-        if device.type in SENSOR_TYPES:
-            entities += [GroheSenseSensorEntity(reader, device.name, key) for key in SENSOR_TYPES[device.type]]
+        if device.type in SENSOR_TYPES_PER_UNIT:
+            entities += [GroheSenseSensorEntity(reader, device.name, key) for key in SENSOR_TYPES_PER_UNIT[device.type]]
             if device.type == GROHE_SENSE_GUARD_TYPE: # The sense guard also gets sensor entities for water flow
                 entities.append(GroheSenseGuardWithdrawalsEntity(reader, device.name, 1))
                 entities.append(GroheSenseGuardWithdrawalsEntity(reader, device.name, 7))
@@ -127,7 +139,7 @@ class GroheSenseGuardReader:
             measurements = measurements_response['data']['measurement']
             measurements.sort(key = lambda x: x['timestamp'])
             if len(measurements):
-                for key in SENSOR_TYPES[self._type]:
+                for key in SENSOR_TYPES_PER_UNIT[self._type]:
                     if key in measurements[-1]:
                         self._measurements[key] = measurements[-1][key]
                 self._poll_from = max(self._poll_from, parse_time(measurements[-1]['timestamp']))
@@ -192,6 +204,10 @@ class GroheSenseGuardWithdrawalsEntity(Entity):
         return '{} {} day'.format(self._name, self._days)
 
     @property
+    def unit_of_measurement(self):
+        return VOLUME_LITERS
+
+    @property
     def state(self):
         if self._days == 1: # special case, if we're averaging over 1 day, just count since midnight local time
             since = datetime.now().astimezone().replace(hour=0,minute=0,second=0,microsecond=0)
@@ -213,8 +229,20 @@ class GroheSenseSensorEntity(Entity):
         return '{} {}'.format(self._name, self._key)
 
     @property
+    def unit_of_measurement(self):
+        return SENSOR_TYPES[self._key].unit
+
+    @property
+    def device_class(self):
+        return SENSOR_TYPES[self._key].device_class
+
+    @property
     def state(self):
-        return self._reader.measurement(self._key)
+        raw_state = self._reader.measurement(self._key)
+        if raw_state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+            return raw_state
+        else:
+            return SENSOR_TYPES[self._key].function(raw_state)
 
     async def async_update(self):
         await self._reader.async_update()
