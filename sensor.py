@@ -166,7 +166,11 @@ class GroheSenseNotificationEntity(Entity):
 
     @property
     def state(self):
-        return '\n'.join([NOTIFICATION_TYPES.get((n['category'], n['type']), 'Unknown notification: {}'.format(n)) for n in self._notifications])
+        def truncate_string(l, s):
+            if len(s) > l:
+                return s[:l-4] + ' ...'
+            return s
+        return truncate_string(255, '\n'.join([NOTIFICATION_TYPES.get((n['category'], n['type']), 'Unknown notification: {}'.format(n)) for n in self._notifications]))
 
     @Throttle(NOTIFICATION_UPDATE_DELAY)
     async def async_update(self):
