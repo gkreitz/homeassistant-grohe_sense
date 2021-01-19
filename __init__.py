@@ -22,7 +22,7 @@ CONFIG_SCHEMA = vol.Schema(
     extra=vol.ALLOW_EXTRA,
 )
 
-BASE_URL = 'https://idp-apigw.cloud.grohe.com/v3/iot/'
+BASE_URL = 'https://idp2-apigw.cloud.grohe.com/v3/iot/'
 
 GROHE_SENSE_TYPE = 101 # Type identifier for the battery powered water detector
 GROHE_SENSE_GUARD_TYPE = 103 # Type identifier for sense guard, the water guard installed on your water pipe
