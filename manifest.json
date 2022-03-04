@@ -1,8 +1,9 @@
 {
-	"domain": "grohe_sense",
-	"name": "Grohe Sense",
-	"documentation": "https://github.com/gkreitz/homeassistant-grohe_sense",
-	"dependencies": [],
-	"requirements": [],
-	"codeowners": ["@gkreitz"]
+  "domain": "grohe_sense",
+  "name": "Grohe Sense",
+  "documentation": "https://github.com/gkreitz/homeassistant-grohe_sense",
+  "dependencies": [],
+  "requirements": [],
+  "version": "1.0.0",
+  "codeowners": ["@gkreitz"]
 }
