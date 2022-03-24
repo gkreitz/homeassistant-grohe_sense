@@ -4,5 +4,6 @@
 	"documentation": "https://github.com/gkreitz/homeassistant-grohe_sense",
 	"dependencies": [],
 	"requirements": [],
-	"codeowners": ["@gkreitz"]
+	"codeowners": ["@gkreitz"],
+	"version": "0.1"
 }
