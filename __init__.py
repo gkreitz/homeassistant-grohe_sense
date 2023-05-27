@@ -1,6 +1,9 @@
 import logging
 import asyncio
 import collections
+import requests
+from lxml import html
+import json
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
@@ -11,12 +14,14 @@ _LOGGER = logging.getLogger(__name__)
 
 DOMAIN = 'grohe_sense'
 
-CONF_REFRESH_TOKEN = 'refresh_token'
+CONF_USERNAME = 'username'
+CONF_PASSWORD = 'password'
 
 CONFIG_SCHEMA = vol.Schema(
     {
         DOMAIN: vol.Schema({
-            vol.Required(CONF_REFRESH_TOKEN): cv.string,
+            vol.Required(CONF_USERNAME): cv.string,
+            vol.Required(CONF_PASSWORD): cv.string,
         }),
     },
     extra=vol.ALLOW_EXTRA,
@@ -29,10 +34,52 @@ GROHE_SENSE_GUARD_TYPE = 103 # Type identifier for sense guard, the water guard 
 
 GroheDevice = collections.namedtuple('GroheDevice', ['locationId', 'roomId', 'applianceId', 'type', 'name'])
 
+def get_token(username, password):
+    cookie = None
+    config = {
+        "username": username,
+        "password": password,
+    }
+
+    try:
+        session = requests.session()
+        response = session.get(url = BASE_URL + 'oidc/login')
+    except Exception as e:
+        _LOGGER.e('Get Refresh Token Exception %s', str(e))
+    else:
+        cookie = response.cookies
+        tree = html.fromstring(response.content)
+
+        name = tree.xpath("//html/body/div/div/div/div/div/div/div/form")
+        action = name[0].action
+
+        payload = {
+            'username': config['username'],
+            'password': config['password'],
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'origin': BASE_URL,
+            'referer': BASE_URL + 'oidc/login',
+            'X-Requested-With': 'XMLHttpRequest',
+        }
+        try:
+            response = session.post(url = action, data = payload, cookies = cookie, allow_redirects=False)
+        except Exception as e:
+            _LOGGER.e('Get Refresh Token Action Exception %s', str(e))
+        else:
+            ondus_url = response.next.url.replace('ondus', 'https')
+            try:
+                response = session.get(url = ondus_url, cookies = cookie)
+            except Exception as e:
+                _LOGGER.e('Get Refresh Token Response Exception %s', str(e))
+            else:
+                json = json.loads(response.text)
+
+    return json['refresh_token']
+
 async def async_setup(hass, config):
     _LOGGER.debug("Loading Grohe Sense")
 
-    await initialize_shared_objects(hass, config.get(DOMAIN).get(CONF_REFRESH_TOKEN))
+    await initialize_shared_objects(hass, get_token(config.get(DOMAIN).get(CONF_USERNAME), config.get(DOMAIN).get(CONF_PASSWORD)))
 
     await hass.helpers.discovery.async_load_platform('sensor', DOMAIN, {}, config)
     await hass.helpers.discovery.async_load_platform('switch', DOMAIN, {}, config)
