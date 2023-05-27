@@ -35,29 +35,21 @@ GROHE_SENSE_GUARD_TYPE = 103 # Type identifier for sense guard, the water guard 
 GroheDevice = collections.namedtuple('GroheDevice', ['locationId', 'roomId', 'applianceId', 'type', 'name'])
 
 async def get_token(hass, username, password):
-    cookie = None
-    config = {
-        "username": username,
-        "password": password,
-    }
-
     try:
         session = aiohttp_client.async_get_clientsession(hass)
         response = await session.get(BASE_URL + 'oidc/login')
     except Exception as e:
-        _LOGGER.e('Get Refresh Token Exception %s', str(e))
+        _LOGGER.error('Get Refresh Token Exception %s', str(e))
     else:
         cookie = response.cookies
-        _LOGGER.log("Try to parse the response")
         tree = html.fromstring(await response.text())
-        _LOGGER.log("Got tree")
 
         name = tree.xpath("//html/body/div/div/div/div/div/div/div/form")
         action = name[0].action
 
         payload = {
-            'username': config['username'],
-            'password': config['password'],
+            'username': username,
+            'password': password,
             'Content-Type': 'application/x-www-form-urlencoded',
             'origin': BASE_URL,
             'referer': BASE_URL + 'oidc/login',
@@ -66,17 +58,13 @@ async def get_token(hass, username, password):
         try:
             response = await session.post(url = action, data = payload, cookies = cookie, allow_redirects=False)
         except Exception as e:
-            _LOGGER.e('Get Refresh Token Action Exception %s', str(e))
+            _LOGGER.error('Get Refresh Token Action Exception %s', str(e))
         else:
-            headers = response.headers
-            _LOGGER.e('Headers', headers)
-            for k in headers:
-                _LOGGER.debug('%s %s', k, headers[k])
             ondus_url = response.headers['Location'].url.replace('ondus', 'https')
             try:
                 response = await session.get(url = ondus_url, cookies = cookie)
             except Exception as e:
-                _LOGGER.e('Get Refresh Token Response Exception %s', str(e))
+                _LOGGER.error('Get Refresh Token Response Exception %s', str(e))
             else:
                 response_json = json.loads(response.text())
 
