@@ -34,7 +34,7 @@ GROHE_SENSE_GUARD_TYPE = 103 # Type identifier for sense guard, the water guard 
 
 GroheDevice = collections.namedtuple('GroheDevice', ['locationId', 'roomId', 'applianceId', 'type', 'name'])
 
-def get_token(username, password):
+async def get_token(username, password):
     cookie = None
     config = {
         "username": username,
@@ -43,7 +43,7 @@ def get_token(username, password):
 
     try:
         session = requests.session()
-        response = session.get(url = BASE_URL + 'oidc/login')
+        response = await session.get(url = BASE_URL + 'oidc/login')
     except Exception as e:
         _LOGGER.e('Get Refresh Token Exception %s', str(e))
     else:
@@ -62,13 +62,13 @@ def get_token(username, password):
             'X-Requested-With': 'XMLHttpRequest',
         }
         try:
-            response = session.post(url = action, data = payload, cookies = cookie, allow_redirects=False)
+            response = await session.post(url = action, data = payload, cookies = cookie, allow_redirects=False)
         except Exception as e:
             _LOGGER.e('Get Refresh Token Action Exception %s', str(e))
         else:
             ondus_url = response.next.url.replace('ondus', 'https')
             try:
-                response = session.get(url = ondus_url, cookies = cookie)
+                response = await session.get(url = ondus_url, cookies = cookie)
             except Exception as e:
                 _LOGGER.e('Get Refresh Token Response Exception %s', str(e))
             else:
@@ -79,7 +79,7 @@ def get_token(username, password):
 async def async_setup(hass, config):
     _LOGGER.debug("Loading Grohe Sense")
 
-    await initialize_shared_objects(hass, get_token(config.get(DOMAIN).get(CONF_USERNAME), config.get(DOMAIN).get(CONF_PASSWORD)))
+    await initialize_shared_objects(hass, await get_token(config.get(DOMAIN).get(CONF_USERNAME), config.get(DOMAIN).get(CONF_PASSWORD)))
 
     await hass.helpers.discovery.async_load_platform('sensor', DOMAIN, {}, config)
     await hass.helpers.discovery.async_load_platform('switch', DOMAIN, {}, config)
