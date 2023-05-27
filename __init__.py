@@ -48,7 +48,9 @@ async def get_token(hass, username, password):
         _LOGGER.e('Get Refresh Token Exception %s', str(e))
     else:
         cookie = response.cookies
-        tree = html.fromstring(response.content)
+        _LOGGER.log("Try to parse the response")
+        tree = html.fromstring(await response.text())
+        _LOGGER.log("Got tree")
 
         name = tree.xpath("//html/body/div/div/div/div/div/div/div/form")
         action = name[0].action
@@ -66,15 +68,19 @@ async def get_token(hass, username, password):
         except Exception as e:
             _LOGGER.e('Get Refresh Token Action Exception %s', str(e))
         else:
-            ondus_url = response.next.url.replace('ondus', 'https')
+            headers = response.headers
+            _LOGGER.e('Headers', headers)
+            for k in headers:
+                _LOGGER.debug('%s %s', k, headers[k])
+            ondus_url = response.headers['Location'].url.replace('ondus', 'https')
             try:
                 response = await session.get(url = ondus_url, cookies = cookie)
             except Exception as e:
                 _LOGGER.e('Get Refresh Token Response Exception %s', str(e))
             else:
-                json = json.loads(response.text)
+                response_json = json.loads(response.text())
 
-    return json['refresh_token']
+    return response_json['refresh_token']
 
 async def async_setup(hass, config):
     _LOGGER.debug("Loading Grohe Sense")
