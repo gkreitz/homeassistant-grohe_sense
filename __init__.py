@@ -34,7 +34,7 @@ GROHE_SENSE_GUARD_TYPE = 103 # Type identifier for sense guard, the water guard 
 
 GroheDevice = collections.namedtuple('GroheDevice', ['locationId', 'roomId', 'applianceId', 'type', 'name'])
 
-async def get_token(username, password):
+async def get_token(hass, username, password):
     cookie = None
     config = {
         "username": username,
@@ -42,8 +42,8 @@ async def get_token(username, password):
     }
 
     try:
-        session = requests.session()
-        response = await session.get(url = BASE_URL + 'oidc/login')
+        session = aiohttp_client.async_get_clientsession(hass)
+        response = await session.get(BASE_URL + 'oidc/login')
     except Exception as e:
         _LOGGER.e('Get Refresh Token Exception %s', str(e))
     else:
@@ -79,7 +79,7 @@ async def get_token(username, password):
 async def async_setup(hass, config):
     _LOGGER.debug("Loading Grohe Sense")
 
-    await initialize_shared_objects(hass, await get_token(config.get(DOMAIN).get(CONF_USERNAME), config.get(DOMAIN).get(CONF_PASSWORD)))
+    await initialize_shared_objects(hass, await get_token(hass, config.get(DOMAIN).get(CONF_USERNAME), config.get(DOMAIN).get(CONF_PASSWORD)))
 
     await hass.helpers.discovery.async_load_platform('sensor', DOMAIN, {}, config)
     await hass.helpers.discovery.async_load_platform('switch', DOMAIN, {}, config)
