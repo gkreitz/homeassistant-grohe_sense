@@ -60,7 +60,7 @@ async def get_token(hass, username, password):
         except Exception as e:
             _LOGGER.error('Get Refresh Token Action Exception %s', str(e))
         else:
-            ondus_url = response.headers['Location'].url.replace('ondus', 'https')
+            ondus_url = response.headers['Location'].replace('ondus', 'https')
             try:
                 response = await session.get(url = ondus_url, cookies = cookie)
             except Exception as e:
