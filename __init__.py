@@ -66,7 +66,7 @@ async def get_token(hass, username, password):
             except Exception as e:
                 _LOGGER.error('Get Refresh Token Response Exception %s', str(e))
             else:
-                response_json = json.loads(response.text())
+                response_json = json.loads(await response.text())
 
     return response_json['refresh_token']
 
