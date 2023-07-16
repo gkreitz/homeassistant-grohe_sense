@@ -34,9 +34,8 @@ GROHE_SENSE_GUARD_TYPE = 103 # Type identifier for sense guard, the water guard 
 
 GroheDevice = collections.namedtuple('GroheDevice', ['locationId', 'roomId', 'applianceId', 'type', 'name'])
 
-async def get_token(hass, username, password):
+async def get_token(session, username, password):
     try:
-        session = aiohttp_client.async_get_clientsession(hass)
         response = await session.get(BASE_URL + 'oidc/login')
     except Exception as e:
         _LOGGER.error('Get Refresh Token Exception %s', str(e))
@@ -73,15 +72,15 @@ async def get_token(hass, username, password):
 async def async_setup(hass, config):
     _LOGGER.debug("Loading Grohe Sense")
 
-    await initialize_shared_objects(hass, await get_token(hass, config.get(DOMAIN).get(CONF_USERNAME), config.get(DOMAIN).get(CONF_PASSWORD)))
+    await initialize_shared_objects(hass, config.get(DOMAIN).get(CONF_USERNAME), config.get(DOMAIN).get(CONF_PASSWORD))
 
     await hass.helpers.discovery.async_load_platform('sensor', DOMAIN, {}, config)
     await hass.helpers.discovery.async_load_platform('switch', DOMAIN, {}, config)
     return True
 
-async def initialize_shared_objects(hass, refresh_token):
+async def initialize_shared_objects(hass, username, password):
     session = aiohttp_client.async_get_clientsession(hass)
-    auth_session = OauthSession(session, refresh_token)
+    auth_session = OauthSession(session, username, password)
     devices = []
 
     hass.data[DOMAIN] = { 'session': auth_session, 'devices': devices }
@@ -106,9 +105,11 @@ class OauthException(Exception):
         self.reason = reason
 
 class OauthSession:
-    def __init__(self, session, refresh_token):
+    def __init__(self, session, username, password):
         self._session = session
-        self._refresh_token = refresh_token
+        self._username = username
+        self._password = password
+        self._refresh_token = get_token(self._session, self._username, self._password)
         self._access_token = None
         self._fetching_new_token = None
 
@@ -167,7 +168,8 @@ class OauthSession:
                             token = await auth_token.token(token)
                         else:
                             _LOGGER.error('Grohe sense refresh token is invalid (or expired), please update your configuration with a new refresh token')
-                            raise OauthException(response.status, await response.text())
+                            self._refresh_token = get_token(self._session, self._username, self._password)
+                            token = await auth_token.token(token)
                     else:
                         _LOGGER.debug('Request to %s returned status %d, %s', url, response.status, await response.text())
             except OauthException as oe:
