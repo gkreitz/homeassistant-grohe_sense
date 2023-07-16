@@ -169,7 +169,7 @@ class OauthSession:
                         else:
                             _LOGGER.error('Grohe sense refresh token is invalid (or expired), please update your configuration with a new refresh token')
                             self._refresh_token = get_token(self._session, self._username, self._password)
-                            token = await auth_token.token(token)
+                            token = await self.token(token)
                     else:
                         _LOGGER.debug('Request to %s returned status %d, %s', url, response.status, await response.text())
             except OauthException as oe:
