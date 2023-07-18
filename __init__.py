@@ -80,7 +80,7 @@ async def async_setup(hass, config):
 
 async def initialize_shared_objects(hass, username, password):
     session = aiohttp_client.async_get_clientsession(hass)
-    auth_session = OauthSession(session, username, password)
+    auth_session = OauthSession(session, username, password, await get_token(session, username, password))
     devices = []
 
     hass.data[DOMAIN] = { 'session': auth_session, 'devices': devices }
@@ -105,11 +105,11 @@ class OauthException(Exception):
         self.reason = reason
 
 class OauthSession:
-    def __init__(self, session, username, password):
+    def __init__(self, session, username, password, refresh_token):
         self._session = session
         self._username = username
         self._password = password
-        self._refresh_token = get_token(self._session, self._username, self._password)
+        self._refresh_token = refresh_token
         self._access_token = None
         self._fetching_new_token = None
 
