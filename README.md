@@ -36,16 +36,12 @@ Graphing water consumption is also nice. Note that the data returned by Grohe's 
 ## Installation
 - Ensure everything is set up and working in Grohe's Ondus app
 - Copy this folder to `<config_dir>/custom_components/grohe_sense/`
-- Go to https://idp2-apigw.cloud.grohe.com/v3/iot/oidc/login
-- Bring up developer tools
-- Log in, that'll try redirecting your browser with a 302 to an url starting with `ondus://idp2-apigw.cloud.grohe.com/v3/iot/oidc/token`, which an off-the-shelf Chrome will ignore
-- You should see this failed redirect in your developer tools. Copy out the full URL and replace `ondus` with `https` and visit that URL (will likely only work once, and will expire, so don't be too slow).
-- This gives you a json response. Save it and extract refresh_token from it (manually, or `jq .refresh_token < file.json`)
 
 Put the following in your home assistant config (N.B., format has changed, this component is no longer configured as a sensor platform)
 ```
 grohe_sense:
-  refresh_token: "YOUR_VERY_VERY_LONG_REFRESH_TOKEN"
+  username: "YOUR_GROHE_EMAIL"
+  password: "YOUR_GROHE_PASSWORD"
 ```
 
 ## Remarks on the "API"

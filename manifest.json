@@ -1,5 +1,6 @@
 {
 	"domain": "grohe_sense",
+	"version": "0.0.1",
 	"name": "Grohe Sense",
 	"documentation": "https://github.com/gkreitz/homeassistant-grohe_sense",
 	"dependencies": [],
