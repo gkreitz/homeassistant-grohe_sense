@@ -119,7 +119,8 @@ class GroheSenseGuardReader:
             return datetime.strptime(s, '%Y-%m-%dT%H:%M:%S.%f%z')
 
         poll_from=self._poll_from.strftime('%Y-%m-%d')
-        measurements_response = await self._auth_session.get(BASE_URL + f'locations/{self._locationId}/rooms/{self._roomId}/appliances/{self._applianceId}/data?from={poll_from}')
+        measurements_response = await self._auth_session.get(BASE_URL + f'locations/{self._locationId}/rooms/{self._roomId}/appliances/{self._applianceId}/data/aggregated?from={poll_from}')
+        _LOGGER.debug('Data read: %s', measurements_response['data'])
         if 'withdrawals' in measurements_response['data']:
             withdrawals = measurements_response['data']['withdrawals']
             _LOGGER.debug('Received %d withdrawals in response', len(withdrawals))
@@ -137,12 +138,13 @@ class GroheSenseGuardReader:
 
         if 'measurement' in measurements_response['data']:
             measurements = measurements_response['data']['measurement']
-            measurements.sort(key = lambda x: x['timestamp'])
+            measurements.sort(key = lambda x: x['date'])
             if len(measurements):
                 for key in SENSOR_TYPES_PER_UNIT[self._type]:
+                    _LOGGER.debug('key: %s', key)
                     if key in measurements[-1]:
                         self._measurements[key] = measurements[-1][key]
-                self._poll_from = max(self._poll_from, parse_time(measurements[-1]['timestamp']))
+                self._poll_from = datetime.strptime(measurements[-1]['date'], '%Y-%m-%d')
         else:
             _LOGGER.info('Data response for appliance %s did not contain any measurements data', self._applianceId)
 
